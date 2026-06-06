@@ -386,7 +386,6 @@ footer {
         <p>detección de enfermedades en hojas de tomate</p>
       </div>
     </div>
-    <button class="api-config-btn" id="apiBtn" onclick="openModal()">⚙ API</button>
   </header>
 
   <!-- Modal API -->
@@ -472,7 +471,7 @@ footer {
 
 <script>
   // ── Config ────────────────────────────────────────────────
-  let API_URL = localStorage.getItem('tomscan_api') || '';
+  let API_URL = 'https://faridsteven-tomscan-api.hf.space';
   let selFile = null;
 
   if (API_URL) {
