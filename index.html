@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TomScan — Detección de Enfermedades</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Figtree:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #0e1a0e;
+  --bg2: #142014;
+  --bg3: #1a2d1a;
+  --card: #1e2e1e;
+  --border: rgba(255,255,255,0.08);
+  --green: #5db85d;
+  --green-bright: #7ed87e;
+  --green-dim: rgba(93,184,93,0.15);
+  --cream: #f0ead8;
+  --text: #e8f0e8;
+  --text-mid: #a0b8a0;
+  --text-dim: #607860;
+  --red: #e85555;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Figtree', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Subtle grid bg */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(93,184,93,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(93,184,93,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events:none; z-index:0;
+}
+
+.wrap { max-width:860px; margin:0 auto; padding:0 24px; position:relative; z-index:1; flex:1; }
+
+/* ── Header ── */
+header {
+  padding: 36px 0 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo { display:flex; align-items:center; gap:14px; }
+
+.logo-icon {
+  width:46px; height:46px;
+  background: linear-gradient(135deg, #2d6e2d, #5db85d);
+  border-radius: 12px 4px 12px 4px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px;
+  box-shadow: 0 0 20px rgba(93,184,93,0.3);
+}
+
+.logo-text h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 26px;
+  color: var(--green-bright);
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.logo-text p {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top:3px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* API config — hidden button top right */
+.api-config-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0.4;
+}
+.api-config-btn:hover { opacity:1; border-color: var(--green); color: var(--green); }
+.api-config-btn.ok { opacity:0.6; border-color: var(--green); color: var(--green); }
+
+/* ── Modal ── */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.7); backdrop-filter:blur(6px);
+  z-index:200; align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  width: 420px; max-width: calc(100vw - 40px);
+}
+.modal h3 { font-family:'Playfair Display',serif; font-size:18px; color:var(--green-bright); margin-bottom:6px; }
+.modal p { font-size:13px; color:var(--text-mid); margin-bottom:16px; line-height:1.6; }
+.modal input {
+  width:100%; padding:10px 12px;
+  background:var(--bg3); border:1px solid var(--border); border-radius:8px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text);
+  outline:none; margin-bottom:12px;
+}
+.modal input:focus { border-color:var(--green); }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end; }
+.btn-sm {
+  padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px;
+  font-family:'Figtree',sans-serif; font-weight:500;
+}
+.btn-cancel { border:1px solid var(--border); background:transparent; color:var(--text-mid); }
+.btn-cancel:hover { background:var(--bg3); }
+.btn-save { border:none; background:var(--green); color:#0e1a0e; }
+.btn-save:hover { background:var(--green-bright); }
+
+/* ── Upload ── */
+.upload-section { margin-bottom:36px; }
+
+.upload-zone {
+  border: 1.5px dashed rgba(93,184,93,0.3);
+  border-radius: 20px;
+  padding: 52px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  background: var(--green-dim);
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.drag {
+  border-color: var(--green);
+  background: rgba(93,184,93,0.08);
+}
+
+.upload-icon-wrap {
+  width:72px; height:72px;
+  background:var(--bg3);
+  border-radius:18px;
+  display:flex; align-items:center; justify-content:center;
+  margin:0 auto 18px;
+  font-size:30px;
+  border:1px solid var(--border);
+  transition: transform 0.2s;
+}
+.upload-zone:hover .upload-icon-wrap { transform:scale(1.05); }
+
+.upload-zone h2 {
+  font-family: 'Playfair Display', serif;
+  font-size:20px; color:var(--text);
+  margin-bottom:6px;
+}
+.upload-zone p { font-size:13px; color:var(--text-mid); margin-bottom:22px; }
+
+.btn-group { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+.btn-upload, .btn-camera {
+  padding:10px 24px;
+  border-radius:50px; font-size:14px; font-weight:500;
+  cursor:pointer; transition:all 0.2s;
+  font-family:'Figtree',sans-serif;
+  display:flex; align-items:center; gap:8px;
+}
+.btn-upload {
+  background:var(--green); color:#0e1a0e; border:none;
+}
+.btn-upload:hover { background:var(--green-bright); transform:translateY(-1px); }
+.btn-camera {
+  background:transparent; color:var(--text); border:1px solid var(--border);
+}
+.btn-camera:hover { border-color:var(--green); color:var(--green); transform:translateY(-1px); }
+
+.formats {
+  margin-top:14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--text-dim);
+  letter-spacing:0.5px;
+}
+
+#fileInput, #cameraInput { display:none; }
+
+/* ── Preview ── */
+.preview-section { display:none; margin-bottom:36px; }
+.preview-section.on { display:block; }
+
+.img-grid {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:16px; margin-bottom:20px;
+}
+@media(max-width:580px){ .img-grid { grid-template-columns:1fr; } }
+
+.img-card {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px; overflow:hidden;
+}
+.img-card-header {
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--text-dim);
+  letter-spacing:1px; text-transform:uppercase;
+  background:var(--bg3);
+}
+.img-card img {
+  width:100%; display:block;
+  min-height:180px; object-fit:contain;
+  background:#111;
+}
+.img-placeholder {
+  min-height:180px; display:flex;
+  align-items:center; justify-content:center;
+  color:var(--text-dim); font-size:12px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+.action-row { display:flex; gap:12px; }
+
+.btn-analyze {
+  flex:1; padding:15px;
+  background: linear-gradient(135deg, #2d6e2d, #5db85d);
+  color:white; border:none; border-radius:12px;
+  font-family:'Figtree',sans-serif;
+  font-size:15px; font-weight:600;
+  cursor:pointer; transition:all 0.2s;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  box-shadow: 0 4px 20px rgba(93,184,93,0.2);
+}
+.btn-analyze:hover:not(:disabled) {
+  box-shadow: 0 6px 28px rgba(93,184,93,0.35);
+  transform:translateY(-1px);
+}
+.btn-analyze:disabled { opacity:0.5; cursor:not-allowed; }
+
+.btn-reset {
+  padding:15px 18px;
+  border:1px solid var(--border); border-radius:12px;
+  background:transparent; cursor:pointer;
+  font-size:16px; color:var(--text-mid);
+  transition:all 0.2s;
+}
+.btn-reset:hover { border-color:var(--text-mid); background:var(--bg3); }
+
+.spinner {
+  width:16px; height:16px;
+  border:2px solid rgba(255,255,255,0.3);
+  border-top-color:white; border-radius:50%;
+  animation:spin 0.7s linear infinite; display:none;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Error ── */
+.error-box {
+  display:none; background:rgba(232,85,85,0.1);
+  border:1px solid rgba(232,85,85,0.3);
+  border-radius:10px; padding:14px 16px;
+  color:var(--red); font-size:13px; margin-bottom:16px;
+}
+.error-box.on { display:block; }
+
+/* ── Results ── */
+.results-section { display:none; margin-bottom:48px; }
+.results-section.on { display:block; }
+
+.results-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px;
+}
+.results-header h2 {
+  font-family:'Playfair Display',serif;
+  font-size:22px; color:var(--green-bright);
+}
+.det-badge {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--text-mid);
+  background:var(--bg3); padding:5px 14px;
+  border-radius:20px; border:1px solid var(--border);
+}
+
+.det-list { display:flex; flex-direction:column; gap:10px; }
+
+.det-item {
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:12px; padding:14px 18px;
+  display:flex; align-items:center; gap:14px;
+  animation:slideUp 0.3s ease forwards; opacity:0;
+}
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.det-dot {
+  width:12px; height:12px;
+  border-radius:50%; flex-shrink:0;
+}
+
+.det-info { flex:1; }
+.det-row1 {
+  display:flex; align-items:center;
+  justify-content:space-between; margin-bottom:7px;
+}
+.det-name {
+  font-size:14px; font-weight:600; color:var(--text);
+  text-transform:capitalize;
+}
+.det-zones {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--text-mid);
+  background:var(--bg3); padding:2px 10px;
+  border-radius:20px; border:1px solid var(--border);
+}
+.det-bar-wrap { display:flex; align-items:center; gap:10px; }
+.det-bar-bg {
+  flex:1; height:4px;
+  background:rgba(255,255,255,0.06);
+  border-radius:10px; overflow:hidden;
+}
+.det-bar-fill { height:100%; border-radius:10px; transition:width 0.8s cubic-bezier(0.16,1,0.3,1); }
+.det-pct {
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px; color:var(--text-dim);
+  min-width:44px; text-align:right;
+}
+
+.no-det {
+  text-align:center; padding:36px;
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; color:var(--text-mid); font-size:14px;
+}
+
+.inf-info {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--text-dim);
+  text-align:center; padding:14px 0 0;
+  letter-spacing:0.5px;
+}
+
+/* ── Footer ── */
+footer {
+  border-top:1px solid var(--border);
+  padding:28px 24px;
+  text-align:center;
+  position:relative; z-index:1;
+}
+.footer-authors {
+  font-size:13px; color:var(--text-mid);
+  line-height:1.7; margin-bottom:6px;
+}
+.footer-authors strong { color:var(--text); font-weight:600; }
+.footer-uni {
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px; color:var(--text-dim);
+  letter-spacing:0.5px; text-transform:uppercase;
+}
+.footer-uni span { color:var(--green); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🍃</div>
+      <div class="logo-text">
+        <h1>TomScan</h1>
+        <p>detección de enfermedades en hojas de tomate</p>
+      </div>
+    </div>
+    <button class="api-config-btn" id="apiBtn" onclick="openModal()">⚙ API</button>
+  </header>
+
+  <!-- Modal API -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <h3>Configurar API</h3>
+      <p>URL del backend desplegado en Hugging Face Spaces.</p>
+      <input type="text" id="apiInput" placeholder="https://usuario-tomscan.hf.space"/>
+      <div class="modal-actions">
+        <button class="btn-sm btn-cancel" onclick="closeModal()">Cancelar</button>
+        <button class="btn-sm btn-save" onclick="saveApi()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="upload-section" id="uploadSection">
+    <div class="upload-zone" id="uploadZone"
+         ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <div class="upload-icon-wrap">🍅</div>
+      <h2>Analiza tu hoja de tomate</h2>
+      <p>Sube una foto o toma una directamente con tu cámara</p>
+      <div class="btn-group">
+        <button class="btn-upload" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+          📁 Subir imagen
+        </button>
+        <button class="btn-camera" onclick="event.stopPropagation(); openCamera()">
+          📷 Tomar foto
+        </button>
+      </div>
+      <p class="formats">JPG · PNG · WEBP · máx 10MB</p>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" onchange="onFileSelect(event)"/>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" onchange="onFileSelect(event)"/>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-section" id="previewSection">
+    <div class="img-grid">
+      <div class="img-card">
+        <div class="img-card-header">imagen original</div>
+        <img id="origImg" src="" alt="Original"/>
+      </div>
+      <div class="img-card">
+        <div class="img-card-header">imagen anotada</div>
+        <img id="annotImg" src="" alt="Anotada" style="display:none"/>
+        <div class="img-placeholder" id="annotPlaceholder">esperando análisis…</div>
+      </div>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="action-row">
+      <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">
+        <span id="btnTxt">🔬 Analizar hoja</span>
+        <div class="spinner" id="spinner"></div>
+      </button>
+      <button class="btn-reset" onclick="resetAll()" title="Nueva imagen">↺</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results-section" id="resultsSection">
+    <div class="results-header">
+      <h2>Detecciones</h2>
+      <span class="det-badge" id="detBadge"></span>
+    </div>
+    <div class="det-list" id="detList"></div>
+    <div class="inf-info" id="infInfo"></div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-authors">
+    Desarrollado por <strong>Lizbeth Natalia Rodríguez</strong> y <strong>Farid Steven Barón</strong>
+  </div>
+  <div class="footer-uni">
+    Maestría en Inteligencia Artificial · <span>Universidad de La Salle</span>
+  </div>
+</footer>
+
+<script>
+  // ── Config ────────────────────────────────────────────────
+  let API_URL = localStorage.getItem('tomscan_api') || '';
+  let selFile = null;
+
+  if (API_URL) {
+    document.getElementById('apiBtn').textContent = '✓ API';
+    document.getElementById('apiBtn').classList.add('ok');
+  }
+
+  // ── Modal ─────────────────────────────────────────────────
+  function openModal() {
+    document.getElementById('apiInput').value = API_URL;
+    document.getElementById('modalOverlay').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+  function saveApi() {
+    const url = document.getElementById('apiInput').value.trim().replace(/\/$/, '');
+    if (!url) return;
+    API_URL = url;
+    localStorage.setItem('tomscan_api', url);
+    document.getElementById('apiBtn').textContent = '✓ API';
+    document.getElementById('apiBtn').classList.add('ok');
+    closeModal();
+  }
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+  });
+
+  // ── Drag & Drop ───────────────────────────────────────────
+  function onDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('drag'); }
+  function onDragLeave() { document.getElementById('uploadZone').classList.remove('drag'); }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('uploadZone').classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) loadFile(f);
+  }
+  function onFileSelect(e) {
+    const f = e.target.files[0];
+    if (f) loadFile(f);
+  }
+
+  function loadFile(file) {
+    selFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('origImg').src = e.target.result;
+      document.getElementById('annotImg').style.display = 'none';
+      document.getElementById('annotPlaceholder').style.display = 'flex';
+      document.getElementById('previewSection').classList.add('on');
+      document.getElementById('resultsSection').classList.remove('on');
+      document.getElementById('errorBox').classList.remove('on');
+      document.getElementById('uploadSection').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ── Analyze ───────────────────────────────────────────────
+  async function analyze() {
+    if (!selFile) return;
+    if (!API_URL) { showError('Configura la URL de la API (botón ⚙ arriba a la derecha).'); return; }
+
+    const btn = document.getElementById('analyzeBtn');
+    const sp  = document.getElementById('spinner');
+    const txt = document.getElementById('btnTxt');
+
+    btn.disabled = true;
+    sp.style.display = 'block';
+    txt.textContent = 'Analizando…';
+    document.getElementById('errorBox').classList.remove('on');
+    const t0 = Date.now();
+
+    try {
+      const fd = new FormData();
+      fd.append('file', selFile);
+
+      const res = await fetch(`${API_URL}/predict`, { method:'POST', body:fd });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+
+      const data = await res.json();
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+
+      if (data.annotated_image) {
+        document.getElementById('annotImg').src = data.annotated_image;
+        document.getElementById('annotImg').style.display = 'block';
+        document.getElementById('annotPlaceholder').style.display = 'none';
+      }
+
+      renderResults(data, elapsed);
+
+    } catch(err) {
+      showError('No se pudo conectar con la API. Verifica que esté activa.<br><small>' + err.message + '</small>');
+    } finally {
+      btn.disabled = false;
+      sp.style.display = 'none';
+      txt.textContent = '🔬 Analizar hoja';
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────
+  function renderResults(data, elapsed) {
+    const sec  = document.getElementById('resultsSection');
+    const list = document.getElementById('detList');
+    const badge = document.getElementById('detBadge');
+    const info  = document.getElementById('infInfo');
+
+    sec.classList.add('on');
+    list.innerHTML = '';
+
+    if (data.total_detections === 0) {
+      badge.textContent = '0 encontradas';
+      list.innerHTML = `<div class="no-det">✅ No se detectaron enfermedades en esta hoja.</div>`;
+    } else {
+      // Agrupar por enfermedad usando colores del backend
+      const grouped = {};
+      data.detections.forEach(det => {
+        const key = det.disease.toLowerCase();
+        if (!grouped[key]) {
+          grouped[key] = { disease: det.disease, color: det.color, count:0, maxConf:0, minConf:1 };
+        }
+        grouped[key].count++;
+        grouped[key].maxConf = Math.max(grouped[key].maxConf, det.confidence);
+        grouped[key].minConf = Math.min(grouped[key].minConf, det.confidence);
+      });
+
+      const groups = Object.values(grouped).sort((a,b) => b.maxConf - a.maxConf);
+      badge.textContent = `${groups.length} enfermedad${groups.length!==1?'es':''} · ${data.total_detections} detección${data.total_detections!==1?'es':''}`;
+
+      groups.forEach((g, i) => {
+        const pct    = Math.round(g.maxConf * 100);
+        const minPct = Math.round(g.minConf * 100);
+        const delay  = i * 90;
+
+        const item = document.createElement('div');
+        item.className = 'det-item';
+        item.style.animationDelay = `${delay}ms`;
+        item.innerHTML = `
+          <div class="det-dot" style="background:${g.color}"></div>
+          <div class="det-info">
+            <div class="det-row1">
+              <div class="det-name">${g.disease.replace(/_/g,' ')}</div>
+              <span class="det-zones">${g.count} ${g.count===1?'zona':'zonas'}</span>
+            </div>
+            <div class="det-bar-wrap">
+              <div class="det-bar-bg">
+                <div class="det-bar-fill" style="width:0%; background:${g.color}" data-w="${pct}"></div>
+              </div>
+              <span class="det-pct">${g.count>1?minPct+'–':''}${pct}%</span>
+            </div>
+          </div>
+        `;
+        list.appendChild(item);
+        setTimeout(() => {
+          item.querySelector('.det-bar-fill').style.width = pct + '%';
+        }, delay + 100);
+      });
+    }
+
+    info.textContent = `inferencia: ${elapsed}s · ${data.total_detections} detecciones · YOLOv8`;
+    setTimeout(() => sec.scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+  }
+
+  function showError(msg) {
+    const b = document.getElementById('errorBox');
+    b.innerHTML = '⚠ ' + msg;
+    b.classList.add('on');
+  }
+
+  // ── Cámara ────────────────────────────────────────────────
+  function openCamera() {
+    // Móvil: usa input nativo con capture
+    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      document.getElementById('cameraInput').click();
+      return;
+    }
+    // PC: modal con getUserMedia
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      document.getElementById('cameraInput').click();
+      return;
+    }
+    const overlay = document.createElement('div');
+    overlay.id = 'camOverlay';
+    overlay.style.cssText = `
+      position:fixed; inset:0; background:rgba(0,0,0,0.88);
+      backdrop-filter:blur(8px); z-index:400;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:20px;
+    `;
+    overlay.innerHTML = `
+      <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#607860;letter-spacing:1px;text-transform:uppercase;">Vista previa de cámara</p>
+      <video id="camVideo" autoplay playsinline style="
+        max-width:min(640px,90vw); max-height:55vh;
+        border-radius:14px; border:1px solid rgba(93,184,93,0.2);
+        background:#000;
+      "></video>
+      <div style="display:flex;gap:12px;">
+        <button id="snapBtn" style="
+          padding:12px 32px; background:#5db85d; color:#0e1a0e;
+          border:none; border-radius:50px; font-size:15px; font-weight:600;
+          cursor:pointer; font-family:'Figtree',sans-serif;
+          transition:background 0.2s;
+        ">📸 Capturar</button>
+        <button id="camCloseBtn" style="
+          padding:12px 24px; background:transparent; color:#a0b8a0;
+          border:1px solid rgba(255,255,255,0.1); border-radius:50px;
+          font-size:15px; cursor:pointer; font-family:'Figtree',sans-serif;
+        ">✕ Cerrar</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    let stream = null;
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width:1280, height:720 } })
+      .then(s => {
+        stream = s;
+        document.getElementById('camVideo').srcObject = s;
+      })
+      .catch(() => {
+        document.body.removeChild(overlay);
+        document.getElementById('cameraInput').click();
+      });
+
+    function stopCamera() {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      if (document.getElementById('camOverlay')) document.body.removeChild(overlay);
+    }
+
+    document.getElementById('snapBtn').onclick = () => {
+      const video = document.getElementById('camVideo');
+      const canvas = document.createElement('canvas');
+      canvas.width  = video.videoWidth  || 1280;
+      canvas.height = video.videoHeight || 720;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      canvas.toBlob(blob => {
+        stopCamera();
+        loadFile(new File([blob], 'foto_camara.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.95);
+    };
+
+    document.getElementById('camCloseBtn').onclick = stopCamera;
+    overlay.addEventListener('click', e => { if (e.target === overlay) stopCamera(); });
+  }
+
+  function resetAll() {
+    selFile = null;
+    ['fileInput','cameraInput'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('origImg').src = '';
+    document.getElementById('annotImg').src = '';
+    document.getElementById('annotImg').style.display = 'none';
+    document.getElementById('annotPlaceholder').style.display = 'flex';
+    document.getElementById('previewSection').classList.remove('on');
+    document.getElementById('resultsSection').classList.remove('on');
+    document.getElementById('errorBox').classList.remove('on');
+    document.getElementById('uploadSection').style.display = 'block';
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+</script>
+</body>
+</html>
